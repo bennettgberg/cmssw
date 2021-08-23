@@ -30,13 +30,14 @@ class Py8PlutoReaderGun : public Py8GunBase {
       std::string fFilename;
 
       std::vector<float> all_ee, all_px, all_py, all_pz;
+      std::vector<int> used_events;
 
 };
 
 // implementation 
 //
 Py8PlutoReaderGun::Py8PlutoReaderGun( edm::ParameterSet const& ps )
-   : Py8GunBase(ps) {
+   : Py8GunBase(ps), used_events({}) {
 
    // ParameterSet defpset ;
    edm::ParameterSet pgun_params = 
@@ -76,15 +77,25 @@ bool Py8PlutoReaderGun::generatePartonsAndHadronize()
    double vy = radius * sin(phi_prod);
    double vz = (70 - (-70)) * randomEngine().flat() + (-70); // luminous region in Z: (-70, 70) mm
 
-   int randomNumber = (int)(100000 * randomEngine().flat()) * 4;
-   std::cout << "Retrieving Pluto random event number " << randomNumber << "..." << std::endl;
+   // ensure event is unique within single node (accept repetition after 100 times though)
+   // note: this of course does not apply for batch production, where probability of repetition exists
+   // (this is minimized by randomly sampling pluto list of events -- birthday problem)
+   int randomNumber, count = 0;
+   do {
+      randomNumber = (int)(100000 * randomEngine().flat()) * 4;
+      count++;
+   }
+   while (std::find(used_events.begin(), used_events.end(), randomNumber) != used_events.end() && count < 100);
+   used_events.push_back(randomNumber);
+
+   std::cout << "Retrieving Pluto random event number " << randomNumber/4 << "..." << std::endl;
 
    // Get the 4 muons four-momenta   
    for (size_t i = 0; i < 4; i++) {
 
       float ee, px, py, pz;
       ee = all_ee.at(randomNumber), px = all_px.at(randomNumber), py = all_py.at(randomNumber), pz = all_pz.at(randomNumber);
-      std::cout << "Just read: " << ee << " " << px << " " << py << " " << pz << std::endl;
+      // std::cout << "Just read: " << ee << " " << px << " " << py << " " << pz << std::endl;
 
       int particleID = (i % 2 == 0 ? +13 : -13);
       
