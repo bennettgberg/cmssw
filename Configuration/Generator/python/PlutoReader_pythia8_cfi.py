@@ -7,7 +7,7 @@ generator = cms.EDFilter("Pythia8PlutoReaderGun",
     pythiaHepMCVerbosity = cms.untracked.bool(True),
 
     PGunParameters = cms.PSet(
-        Filename = cms.string('GeneratorInterface/Pythia8Interface/test/muon_sample_100k.csv'),
+        Filename = cms.string('GeneratorInterface/Pythia8Interface/test/pluto_EtaTo4Mu_100k_events.csv'),
         ParticleID = cms.vint32(13),
         MakeDisplaced = cms.bool(False),
         MinPhi = cms.double(-3.14159265359),
