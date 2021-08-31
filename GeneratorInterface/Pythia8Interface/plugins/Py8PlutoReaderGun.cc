@@ -27,6 +27,7 @@ class Py8PlutoReaderGun : public Py8GunBase {
       double  fMinProdRadius;
       double  fMaxProdRadius;
       bool    fMakeDisplaced;
+      int     fNumMuonDaughters;
       std::string fFilename;
 
       std::vector<float> all_ee, all_px, all_py, all_pz;
@@ -50,6 +51,7 @@ Py8PlutoReaderGun::Py8PlutoReaderGun( edm::ParameterSet const& ps )
    fMinProdRadius = pgun_params.getParameter<double>("MinProdRadius"); // , 0.);
    fMaxProdRadius = pgun_params.getParameter<double>("MaxProdRadius"); // , 0.);
    fMakeDisplaced = pgun_params.getParameter<bool>("MakeDisplaced"); //, true);
+   fNumMuonDaughters = pgun_params.getParameter<int>("NumMuonDaughters"); // 4
 
    std::cout << "[Py8PlutoReaderGun constructor] Begin reading Pluto input file..." << std::endl;
    std::ifstream infile(fFilename);
@@ -82,16 +84,16 @@ bool Py8PlutoReaderGun::generatePartonsAndHadronize()
    // (this is minimized by randomly sampling pluto list of events -- birthday problem)
    int randomNumber, count = 0;
    do {
-      randomNumber = (int)(100000 * randomEngine().flat()) * 4;
+      randomNumber = (int)(100000 * randomEngine().flat()) * fNumMuonDaughters;
       count++;
    }
    while (std::find(used_events.begin(), used_events.end(), randomNumber) != used_events.end() && count < 100);
    used_events.push_back(randomNumber);
 
-   std::cout << "Retrieving Pluto random event number " << randomNumber/4 << "..." << std::endl;
+   std::cout << "Retrieving Pluto random event number " << randomNumber/fNumMuonDaughters << "..." << std::endl;
 
-   // Get the 4 muons four-momenta   
-   for (size_t i = 0; i < 4; i++) {
+   // Get the 2--4 muons four-momenta   
+   for (int i = 0; i < fNumMuonDaughters; i++) {
 
       float ee, px, py, pz;
       ee = all_ee.at(randomNumber), px = all_px.at(randomNumber), py = all_py.at(randomNumber), pz = all_pz.at(randomNumber);
