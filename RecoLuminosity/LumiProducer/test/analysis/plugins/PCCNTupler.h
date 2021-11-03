@@ -26,8 +26,10 @@
 #include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
-
 #include "DataFormats/JetReco/interface/CaloJetCollection.h"
+
+//for hf digi stuff
+#include "DataFormats/HcalDigi/interface/HcalDigiCollections.h"
 
 #include "FWCore/Framework/interface/one/EDAnalyzer.h"
 #include "FWCore/Utilities/interface/EDGetToken.h"
@@ -64,8 +66,26 @@ class PCCNTupler : public edm::one::EDAnalyzer<edm::one::SharedResources, edm::o
     edm::EDGetTokenT<reco::VertexCollection> recoVtxToken;
     edm::EDGetTokenT<std::vector< PileupSummaryInfo> > pileUpToken;
     edm::EDGetTokenT<reco::CaloJetCollection>  hltjetsToken_;
+    //edm::EDGetTokenT<edm::SortedCollection<HFRecHit>> hfToken;
+    //edm::EDGetTokenT<edm::SortedCollection<HFRecHit,edm::StrictWeakOrdering<HFRecHit> > > hfToken;
+    //edm::EDGetTokenT<edm::SortedCollection<HFPreRecHit,edm::StrictWeakOrdering<HFPreRecHit> > > hfToken;
+    //token for qie
+    edm::EDGetTokenT<HcalDataFrameContainer<QIE10DataFrame> > qie10digisToken_;
+    //edm::EDGetTokenT< QIE10DigiCollection > qie10digisToken_;
+    //random other token to check if qie is unique
+    edm::EDGetTokenT<edm::SortedCollection<HBHEDataFrame,edm::StrictWeakOrdering<HBHEDataFrame> >> othertoken;
+
     float *jhcalpt, *jhcalphi, *jhcaleta, *jhcale, *jhcalemf, *jhcaln90, *jhcaln90hits;
+    float *hfcaleta, *hfcalphi; //, *hfcale; //bpg
+    int *soi, *ok, *adc, *le_tdc, *te_tdc, *capid;
     int nhjetcal;
+    //int nhf; //bpg
+    int nqieval; //bpg
+    //float *qiehits;
+    //map to store the total energy as a function of ieta and iphi.
+    //std::map<std::pair<int,int>,float> hcalTotE;
+    //energy is int instead of float for now to avoid root error.
+    //std::map<std::pair<int,int>,float> hcalTotE;
 
     edm::InputTag   fPrimaryVertexCollectionLabel;
     edm::InputTag   fPixelClusterLabel;
@@ -99,11 +119,13 @@ class PCCNTupler : public edm::one::EDAnalyzer<edm::one::SharedResources, edm::o
     bool includeVertexInformation;
     bool includePixels;
     bool includeJets;
+    bool includeHF; //bpg added
     bool splitByBX;
     bool pixelPhase2Geometry;
 
     int nPU;
     int nVtx;
+    int nClusTot;
     int vtx_nTrk[MAX_VERTICES];
     int vtx_ndof[MAX_VERTICES];
     float vtx_x[MAX_VERTICES];

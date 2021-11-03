@@ -48,9 +48,11 @@ PCCNTupler::PCCNTupler(edm::ParameterSet const& iConfig):
     fPileUpInfoLabel(edm::InputTag("addPileupInfo")),
     saveType(iConfig.getUntrackedParameter<string>("saveType")),
     sampleType(iConfig.getUntrackedParameter<string>("sampleType")),
-    includeVertexInformation(iConfig.getUntrackedParameter<bool>("includeVertexInformation",1)),
-    includePixels(iConfig.getUntrackedParameter<bool>("includePixels",1)),
-    includeJets(iConfig.getUntrackedParameter<bool>("includeJets",0)),
+    includeVertexInformation(iConfig.getUntrackedParameter<bool>("includeVertexInformation",0)), //bpg changed to 0
+    includePixels(iConfig.getUntrackedParameter<bool>("includePixels",0)), //bpg changed to 0
+    //includeJets(iConfig.getUntrackedParameter<bool>("includeJets",0)),
+    includeJets(iConfig.getUntrackedParameter<bool>("includeJets",0)), //bpg wants to includeJets now!
+    includeHF(iConfig.getUntrackedParameter<bool>("includeHF",1)), //bpg added
     splitByBX(iConfig.getUntrackedParameter<bool>("splitByBX",1)),
     pixelPhase2Geometry(iConfig.getUntrackedParameter<bool>("pixelPhase2Geometry",0))
 {
@@ -104,6 +106,8 @@ PCCNTupler::PCCNTupler(edm::ParameterSet const& iConfig):
         //tree->Branch("nPixelClusters","map<int,int>",&nPixelClusters);
         //tree->Branch("nClusters","map<int,int>",&nClusters);
         tree->Branch("layers","map<int,int>",&layers);
+        //bpg adding
+        tree->Branch("nClusTot", &nClusTot, "nClusTot/I");
         pixelToken=consumes<edmNew::DetSetVector<SiPixelCluster> >(fPixelClusterLabel);
     }
 
@@ -123,6 +127,8 @@ PCCNTupler::PCCNTupler(edm::ParameterSet const& iConfig):
         jhcaln90 = new float[kMaxJetCal]; 
         jhcaln90hits = new float[kMaxJetCal];
 
+        //generate the dictionary thing to avoid the stupid root error
+        //gInterpreter->GenerateDictionary("std::map<std::pair<int,int>,float>");
         //ccla HLTJETS
         tree->Branch("NohJetCal",&nhjetcal,"NohJetCal/I");
         tree->Branch("ohJetCalPt",jhcalpt,"ohJetCalPt[NohJetCal]/F");
@@ -132,6 +138,53 @@ PCCNTupler::PCCNTupler(edm::ParameterSet const& iConfig):
         tree->Branch("ohJetCalEMF",jhcalemf,"ohJetCalEMF[NohJetCal]/F");
         tree->Branch("ohJetCalN90",jhcaln90,"ohJetCalN90[NohJetCal]/F");
         tree->Branch("ohJetCalN90hits",jhcaln90hits,"ohJetCalN90hits[NohJetCal]/F");
+       // tree->Branch("hcalTotE","map<std::pair<int,int>,float>",&hcalTotE);
+    }
+
+    //bpg adding this whole section.
+    if(includeHF) {
+        //hfToken = consumes< edm::SortedCollection<HFRecHit> >(edm::InputTag("hfInput")); //?????
+        //hfToken = consumes< edm::SortedCollection<HFRecHit> >(edm::InputTag("hfrechits")); //?????
+        //hfToken = consumes< edm::SortedCollection<HFRecHit> >(edm::InputTag("hfreco")); //?????
+        
+        //hfToken = consumes< edm::SortedCollection<HFRecHit,edm::StrictWeakOrdering<HFRecHit> > >(edm::InputTag("hfreco")); //?????
+        //hfToken = consumes< edm::SortedCollection<HFRecHit,edm::StrictWeakOrdering<HFRecHit> > >(edm::InputTag("hcalDigis")); //?????
+        //hfToken = consumes< edm::SortedCollection<HFRecHit,edm::StrictWeakOrdering<HFRecHit> > >(edm::InputTag("reducedHcalRecHits")); //?????
+        //hfToken = consumes< edm::SortedCollection<HFPreRecHit,edm::StrictWeakOrdering<HFPreRecHit> > >(edm::InputTag("hfprereco")); //?????
+        //reco file needed for this one
+        //qie10digisToken_ = consumes<HcalDataFrameContainer<QIE10DataFrame> >(edm::InputTag("simHcalUnsuppressedDigis")); 
+        //????
+        qie10digisToken_ = consumes<HcalDataFrameContainer<QIE10DataFrame> >(edm::InputTag("simHcalUnsuppressedDigis")); 
+        //??
+        //qie10digisToken_ = consumes< QIE10DigiCollection >(edm::InputTag("simHcalUnsuppressedDigis")); 
+       // qie10digisToken_ = consumes< QIE10DigiCollection >(edm::InputTag("HFQIE10DigiCollection")); 
+        othertoken = consumes<edm::SortedCollection<HBHEDataFrame,edm::StrictWeakOrdering<HBHEDataFrame> >>(edm::InputTag("simHcalUnsuppressedDigis"));
+        const int kMaxHFCal = 10000;
+        hfcalphi = new float[kMaxHFCal];
+        hfcaleta = new float[kMaxHFCal];
+        //hfcale = new int[kMaxHFCal];
+        soi    = new int[kMaxHFCal];
+        ok     = new int[kMaxHFCal];
+        adc    = new int[kMaxHFCal];
+        le_tdc = new int[kMaxHFCal];
+        te_tdc = new int[kMaxHFCal];
+        capid  = new int[kMaxHFCal];
+        
+        //tree->Branch("Nohf", &nhf, "Nohf/I");
+        tree->Branch("Noqie", &nqieval, "Noqie/I");
+        //tree->Branch("hfcaleta", hfcaleta, "hfcaleta[Nohf]/F");
+        //tree->Branch("hfPhi", hfcalphi, "hfcalphi[Nohf]/F");
+        tree->Branch("hfcaleta", hfcaleta, "hfcaleta[Noqie]/F");
+        tree->Branch("hfPhi", hfcalphi,  "hfcalphi[Noqie]/F");
+        tree->Branch( "soi"   , soi   , "soi[Noqie]/I"       );
+        tree->Branch( "ok"    , ok    , "ok[Noqie]/I"        );
+        tree->Branch( "adc"   , adc   , "adc[Noqie]/I"       );
+        tree->Branch( "le_tdc", le_tdc, "le_tdc[Noqie]/I"    );
+        tree->Branch( "te_tdc", te_tdc, "te_tdc[Noqie]/I"    );
+        tree->Branch( "capid" , capid , "capid[Noqie]/I"     );
+       // tree->Branch("hfcale", hfcale, "hfcale[Nohf]/F");
+                      
+
     }
 }
 
@@ -300,6 +353,20 @@ void PCCNTupler::analyze(const edm::Event& iEvent,
                     jhcale[jhcal] = i->energy();
                     jhcalemf[jhcal] = i->emEnergyFraction();
                     jhcaln90[jhcal] = i->n90();
+
+                    //first get the values for ieta and iphi
+                //    int ieta = (int) (i->eta() / 2.4 * 85); //ieta goes from -85 to 85 (no crystal at 0).
+                 //   int iphi = (int) (i->phi() / 3.1415927 * 180) + 180; //iphi goes from 1 to 360
+                    //make pair to use in the map
+                  //  std::pair<int,int> etaphi;
+                  //  etaphi.first = ieta;
+                  //  etaphi.second = iphi;
+                    //if this pair isn't in the map yet, create it.
+                 //   if(hcalTotE.count(etaphi)==0){
+                 //     hcalTotE[etaphi]=0;
+                 //   }
+                 //   //now add the energy to the previous total.
+                 //   hcalTotE[etaphi] += i->energy();
                     //jetID->calculate( iEvent, *i );
                     //jhcaln90hits[jhcal] = jetID->n90Hits();
                     jhcal++;
@@ -321,53 +388,166 @@ void PCCNTupler::analyze(const edm::Event& iEvent,
       if (!hClusterColl.failedToGet()) {        
 	
         
-	const edmNew::DetSetVector<SiPixelCluster>& clustColl = *hClusterColl;
-	// ----------------------------------------------------------------------
-	// -- Clusters without tracks
-	
-	for (edmNew::DetSetVector<SiPixelCluster>::const_iterator isearch = clustColl.begin();  isearch != clustColl.end(); ++isearch){
-	  // these are sorted by modules so we pick the current one
-	  edmNew::DetSet<SiPixelCluster>  mod = *isearch;
-	  if(mod.empty()) { continue; }// skip empty modules
-	  DetId detId = mod.id();
-	  
-	  bxModKey.second=detId();
-	  for (edmNew::DetSet<SiPixelCluster>::const_iterator di = mod.begin(); di != mod.end(); ++di){
-	    if(nPixelClusters.count(bxModKey)==0){
-	      nPixelClusters[bxModKey]=0;
-	    }
-	    nPixelClusters[bxModKey] = nPixelClusters[bxModKey]+1;
-	    
-	    
-	    int nCluster = isearch->size();
-	    if(nClusters.count(bxModKey)==0){
-	      nClusters[bxModKey]=0;
-	    }
-	    nClusters[bxModKey] += nCluster;
-	    
-	    if (detId.subdetId() == PixelSubdetector::PixelBarrel) {
-	      PixelBarrelName detName = PixelBarrelName(detId);
-	      int layer = detName.layerName();
-	      if(layers.count(detId())==0){
-		layers[detId()]=layer;
-	      }
-	    } else {
-	      assert(detId.subdetId() == PixelSubdetector::PixelEndcap);
-	      PixelEndcapName detName = PixelEndcapName(detId);
-	      int disk = detName.diskName();
-	      if(layers.count(detId())==0){
-		layers[detId()]=disk+NumPixelBarrelLayers; 
-	      }
-	    }	    
-	    //}
-	  }
-	}
-      }
-    }
-}
+        const edmNew::DetSetVector<SiPixelCluster>& clustColl = *hClusterColl;
+        // ----------------------------------------------------------------------
+        // -- Clusters without tracks
+          
+        //bpg added
+        int nClusCtr = 0;
+	    for (edmNew::DetSetVector<SiPixelCluster>::const_iterator isearch = clustColl.begin();  isearch != clustColl.end(); ++isearch){
+	      // these are sorted by modules so we pick the current one
+	      edmNew::DetSet<SiPixelCluster>  mod = *isearch;
+	      if(mod.empty()) { continue; }// skip empty modules
+	      DetId detId = mod.id();
+	      
+	      bxModKey.second=detId();
+	      for (edmNew::DetSet<SiPixelCluster>::const_iterator di = mod.begin(); di != mod.end(); ++di){
+	        if(nPixelClusters.count(bxModKey)==0){
+	          nPixelClusters[bxModKey]=0;
+	        }
+	        nPixelClusters[bxModKey] = nPixelClusters[bxModKey]+1;
+            //bpg added
+            nClusCtr += nPixelClusters[bxModKey];
+	        
+	        
+	        int nCluster = isearch->size();
+	        if(nClusters.count(bxModKey)==0){
+	          nClusters[bxModKey]=0;
+	        }
+	        nClusters[bxModKey] += nCluster;
+	        
+	        if (detId.subdetId() == PixelSubdetector::PixelBarrel) {
+	          PixelBarrelName detName = PixelBarrelName(detId);
+	          int layer = detName.layerName();
+	          if(layers.count(detId())==0){
+                layers[detId()]=layer;
+	          }
+	        } 
+            else {
+	          assert(detId.subdetId() == PixelSubdetector::PixelEndcap);
+	          PixelEndcapName detName = PixelEndcapName(detId);
+	          int disk = detName.diskName();
+	          if(layers.count(detId())==0){
+                layers[detId()]=disk+NumPixelBarrelLayers; 
+	          } //layers.count 0 
+	        } //NOT	subdet == PixelBarel    
+	      } //for di loop
+	    } //for isearch loop
+    
+        //bpg added
+        nClusTot = nClusCtr;
+
+      } //if not failed to get hClusterColl
+    } //if includePixels
+    
+    //bpg added this section
+    if(includeHF) {
+        std::cout << "Including HF" << std::endl;
+
+        nqieval = 0;
+        //nhf = 0;
+        //edm::Handle<edm::SortedCollection<HFRecHit,edm::StrictWeakOrdering<HFRecHit> >> hfRecHits;
+        //edm::Handle< edm::SortedCollection<HFPreRecHit,edm::StrictWeakOrdering<HFPreRecHit> > > hfRecHits;
+        //????
+        edm::Handle< HcalDataFrameContainer<QIE10DataFrame> > qiehandle;
+        //??
+        //edm::Handle< QIE10DigiCollection > qiehandle;
+        edm::Handle< edm::SortedCollection<HBHEDataFrame,edm::StrictWeakOrdering<HBHEDataFrame> > > otherhandle;
+        //std::cout << "hfRecHits declared." << std::endl;
+        //edm::Handle<edm::SortedCollection<HFRecHit>> hfRecHits;
+        //iEvent.getByToken(hfToken, hfRecHits);
+        iEvent.getByToken(qie10digisToken_, qiehandle);
+        iEvent.getByToken(othertoken, otherhandle);
+        //std::cout << "hfRecHit got!" << std::endl;
+        //bool valid = hfRecHits.isValid();
+        bool valid = qiehandle.isValid();
+        bool othervalid = otherhandle.isValid();
+        std::cout << "othervalid: " << othervalid << std::endl;
+        if (not valid) {
+         //   std::cout << "hfRecHits not valid. fffffff" <<std::endl;
+            std::cout << "Not valid!!!!" << std::endl;
+            //nhf = -1;
+            //if(hfRecHits.failedToGet()) {
+            if(qiehandle.failedToGet()) {
+                //in this case, an attempt to get the data was made.
+                std::cout << "data not available!! " <<std::endl;
+                //nhf = -2; 
+                nqieval = -2; 
+            }
+            else {
+                std::cout << "no attmept to get data was made!" << std::endl;
+                //nhf = -5;
+                nqieval = -5;
+            }
+        } 
+        else {
+            //edm::SortedCollection<HFRecHit> myhfrechits;
+            std::cout << "Valid!!!!!!!!!!!!!!!" << std::endl;
+           // edm::SortedCollection<HFRecHit, edm::StrictWeakOrdering<HFRecHit> > myhfrechits;
+           // edm::SortedCollection<HFPreRecHit,edm::StrictWeakOrdering<HFPreRecHit> > myhfrechits;
+            //????
+            //HcalDataFrameContainer<QIE10DataFrame> myqie;
+            //myhfrechits = *hfRecHits;
+            //myqie = *qiehandle;
+            std::cout << "myhfrechits assigned!!!!" << std::endl;
+            //std::sort(mycalojets.begin(),mycalojets.end(),PtGreater());
+            //typedef edm::SortedCollection<HFRecHit>::const_iterator hfiter;
+            //typedef edm::SortedCollection<HFRecHit,edm::StrictWeakOrdering<HFRecHit>>::const_iterator hfiter;
+            //typedef edm::SortedCollection<HFPreRecHit,edm::StrictWeakOrdering<HFPreRecHit> >::const_iterator hfiter;
+            typedef HcalDataFrameContainer<QIE10DataFrame>::const_iterator qieiter;
+            std::cout << "qieiter declared." << std::endl;
+            //int hfcal=0;
+            int nqie = 0;
+            //for ( hfiter i=myhfrechits.begin(); i!=myhfrechits.end(); i++) {
+            //for ( qieiter i=myqie.begin(); i!=myqie.end(); i++) {
+            for (uint32_t i=0; i<qiehandle->size(); i++){
+                // From: https://github.com/awhitbeck/HFcommissioningAnalysis/blob/b3456c9fe66ef9bcc6c54773d60f768c269a5c74/src/HFanalyzer.cc#L429
+                QIE10DataFrame qie10df = static_cast<QIE10DataFrame>((*qiehandle)[i]);
+                //if (i->pt()>5 && i->energy()>0.){
+                //if(hfcal %10 == 0) std::cout << "inside hfiter loop! hfcal = " << hfcal << std::endl;
+                if(nqie %10 == 0) std::cout << "inside qieiter loop! nqie = " << nqie << std::endl;
+                //if (i->energy()>0.){
+                //get detid
+                DetId detid = qie10df.detid();
+                HcalDetId hcdi = HcalDetId(detid);
+
+                int nTS = qie10df.samples();
+                //get the samples
+                for(int its=0; its<nTS; ++its)
+                { 
+                    auto sam = qie10df[its];
+                //QIE10DataFrame::Sample sam = myqie[i];
+                //if (sam.ok()){ //?????
+                    //make an HcalDetId object to get the iphi, ieta info.
+                    //HcalDetId hcdi = i->id();
+                    //hfcalphi[hfcal] = hcdi.iphi(); //i->iphi();
+                    //hfcaleta[hfcal] = hcdi.ieta(); //i->ieta();
+                    hfcalphi[nqie] = hcdi.iphi(); //i->iphi();
+                    hfcaleta[nqie] = hcdi.ieta(); //i->ieta();
+                    //hfcale[hfcal] = i->energy();
+                    //get digital energy as a function of ieta and iphi.
+                    //hfcale[hfcal] = 0; //TODO: this
+                    //the below are all ints stored by the QIE10DataFrame
+                    soi    [nqie] = sam.soi() ;
+                    ok     [nqie] = sam.ok()  ;
+                    adc    [nqie] = sam.adc()  ;
+                    le_tdc [nqie] = sam.le_tdc() ;
+                    te_tdc [nqie] = sam.te_tdc() ;
+                    capid  [nqie] = sam.capid()  ;
+                
+                    //hfcal++;
+                    nqie++;
+                } //energy>0 cuts
+            } //for hfiter loop
+            //nhf = hfcal;
+            nqieval = nqie;
+        } //valid True
+    } //includeHF
+} //analyze function
 
 void PCCNTupler::Reset() {
     nVtx = 0;
+    nClusTot = 0;
     nPixelClusters.clear();
     nClusters.clear();
     layers.clear();

@@ -15,6 +15,9 @@ process.MessageLogger.categories.append('HLTrigReport')
 process.MessageLogger.categories.append('L1GtTrigReport')
 process.options = cms.untracked.PSet( wantSummary = cms.untracked.bool(True) )
 
+#dump event contents
+#process.dump=cms.EDAnalyzer('EventContentAnalyzer')
+
 # -- Database configuration
 process.load("CondCore.CondDB.CondDB_cfi")
 
@@ -24,11 +27,17 @@ process.load("Configuration.StandardSequences.MagneticField_38T_cff")
 process.load("Configuration.StandardSequences.GeometryRecoDB_cff") #
 process.load("RecoVertex.BeamSpotProducer.BeamSpot_cfi")
 
+#is this needed??
+process.load("RecoLocalCalo.HcalRecAlgos.hcalRecAlgoESProd_cfi")
+
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_condDBv2_cff')
 from Configuration.AlCa.GlobalTag_condDBv2 import GlobalTag
 
 #process.GlobalTag = GlobalTag(process.GlobalTag, '80X_mcRun2_asymptotic_v14', '')
 process.GlobalTag = GlobalTag(process.GlobalTag, '90X_upgrade2023_realistic_v1', '')
+
+#is this needed for qie?
+process.GlobalTag.globaltag ='100X_dataRun2_HLT_v3'
 
 
 process.load("Configuration.StandardSequences.Reconstruction_cff") # 
@@ -47,6 +56,79 @@ process.zerobiasfilter = cms.EDFilter("HLTHighLevel",
    throw = cms.bool(False)
     )
 
+# QIE10  Unpacker
+#------------------------------------------------------------------------------------
+# this is needed to get hCalDigis
+process.load("EventFilter.HcalRawToDigi.HcalRawToDigi_cfi")
+
+#??
+process.load('Configuration.EventContent.EventContent_cff')
+
+process.qie10Digis = process.hcalDigis.clone()
+#process.qie11Digis = process.hcalDigis.clone()
+
+#process.tuple_step = cms.Sequence(
+#    ## Make HCAL tuples: Event info
+#    #process.hcalTupleEvent*
+#
+#    ## Make HCAL tuples: FED info
+#    #process.hcalTupleFEDs*
+#
+#    ## Make HCAL tuples: digi info
+#    #process.hcalTupleHBHEDigis*
+#    #process.hcalTupleHODigis*
+#    #process.hcalTupleHFDigis*
+#    process.hcalTupleQIE10Digis* # for HF
+#    #process.hcalTupleQIE11Digis* 
+#
+#    ## Make HCAL tuples: reco info
+#    #process.hcalTupleHBHERecHits*
+#    #process.hcalTupleHFRecHits*
+#    #process.hcalTupleHORecHits*
+#
+#    ## Make HCAL tuples: trigger info
+#    #process.hcalTupleTrigger*
+#    #process.hcalTupleTriggerPrimitives*
+#    #process.hcalTupleTriggerObjects*
+#
+#    # noise filter
+##    process.hcalTupleHcalNoiseFilters*
+#
+#    ## Package everything into a tree
+#    process.hcalTupleTree
+#)
+
+#process.preparation = cms.Path(
+#    ## Unpack digis from RAW
+#    #process.RawToDigi*
+#    #process.hcalDigis*
+#    process.qie10Digis*
+#    #process.qie11Digis*
+#
+#    ## reconstruction
+#    #process.L1Reco*
+#    #process.reconstruction*
+#    #process.hcalLocalRecoSequence*
+#
+#    ## Do energy reconstruction
+#    #process.horeco*
+##    process.hfprereco*
+##    process.hfreco*
+##    process.hbheprereco*
+##    process.hbheplan1*
+#
+#    ## For noise filter
+##    process.hcalnoise*
+##    process.HBHENoiseFilterResultProducer*
+#    #process.ApplyBaselineHBHENoiseFilter*
+#
+#    ## Make the ntuples
+#    process.tuple_step
+#)
+
+#this is needed??
+#process.esp = cms.ESProducer("HcalPedestalWidths")
+
 # the main Analyzer
 process.lumi = cms.EDAnalyzer(
     "PCCNTupler",
@@ -57,11 +139,13 @@ process.lumi = cms.EDAnalyzer(
     dumpAllEvents                = cms.untracked.int32(0),
     vertexCollLabel              = cms.untracked.InputTag('offlinePrimaryVertices'),
     pixelClusterLabel            = cms.untracked.InputTag('siPixelClusters'), # even in Phase2, for now.
+    qietag                       = cms.untracked.InputTag("simHcalUnsuppressedDigis", "HFQIE10DigiCollection"),
     saveType                     = cms.untracked.string('Event'), # LumiSect, LumiNib, Event
     sampleType                   = cms.untracked.string('MC'), # MC, DATA
-    includeVertexInformation     = cms.untracked.bool(True),
-    includePixels                = cms.untracked.bool(True),
-    splitByBX                    = cms.untracked.bool(True),
+    includeVertexInformation     = cms.untracked.bool(True), 
+    includePixels                = cms.untracked.bool(True), 
+    includeHF                    = cms.untracked.bool(True), #bpg added
+    splitByBX                    = cms.untracked.bool(True), 
     L1GTReadoutRecordLabel       = cms.untracked.InputTag('gtDigis'), 
     hltL1GtObjectMap             = cms.untracked.InputTag('hltL1GtObjectMap'), 
     HLTResultsLabel              = cms.untracked.InputTag('TriggerResults::HLT'),
@@ -70,6 +154,9 @@ process.lumi = cms.EDAnalyzer(
 
 # -- Path
 process.p = cms.Path(
+    #process.dump*
+    process.qie10Digis*
+   # process.qie11Digis*
     process.zerobiasfilter*
     process.lumi
     )
@@ -81,12 +168,16 @@ readFiles = cms.untracked.vstring()
 secFiles = cms.untracked.vstring() 
 process.source = cms.Source ("PoolSource",fileNames = readFiles, secondaryFileNames = secFiles) 
 readFiles.extend([
+#'/store/mc/PhaseIIFall16DR82/SingleNeutrino/GEN-SIM-RECO/FlatPU0to75RECO_90X_upgrade2023_realistic_v1-v1/70000/00B7D98A-7D64-E711-BD8E-0CC47A745282.root',
+#'/store/mc/RunIISummer16DR80/SingleNeutrino/GEN-SIM-RAW/FlatPU0to75TuneCP0_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v2/20000/0031D115-0909-E811-8E5B-0025905D1E0A.root',
+#'file:/eos/user/b/bgreenbe/singleNeutrinoSample.root',
+'file:/eos/user/b/bgreenbe/singleNeutrino_RAW.root',
 # Min Bias 90X files with 2023D4 geometry and timing. no pu.
- '/store/relval/CMSSW_9_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/90X_upgrade2023_realistic_v1_2023D4Timing-v1/10000/28088B65-66C2-E611-BF89-0CC47A7C347A.root',
- '/store/relval/CMSSW_9_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/90X_upgrade2023_realistic_v1_2023D4Timing-v1/10000/20D68D58-3CC2-E611-B15B-0CC47A4C8F18.root',
- '/store/relval/CMSSW_9_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/90X_upgrade2023_realistic_v1_2023D4Timing-v1/10000/94242929-30C3-E611-B3E0-0025905B85DC.root',
- '/store/relval/CMSSW_9_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/90X_upgrade2023_realistic_v1_2023D4Timing-v1/10000/F46D98E7-EAC2-E611-936E-0CC47A7452D0.root',
- '/store/relval/CMSSW_9_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/90X_upgrade2023_realistic_v1_2023D4Timing-v1/10000/36D3D8CD-3BC2-E611-908A-0025905A6088.root',
+# '/store/relval/CMSSW_9_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/90X_upgrade2023_realistic_v1_2023D4Timing-v1/10000/28088B65-66C2-E611-BF89-0CC47A7C347A.root',
+# '/store/relval/CMSSW_9_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/90X_upgrade2023_realistic_v1_2023D4Timing-v1/10000/20D68D58-3CC2-E611-B15B-0CC47A4C8F18.root',
+# '/store/relval/CMSSW_9_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/90X_upgrade2023_realistic_v1_2023D4Timing-v1/10000/94242929-30C3-E611-B3E0-0025905B85DC.root',
+# '/store/relval/CMSSW_9_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/90X_upgrade2023_realistic_v1_2023D4Timing-v1/10000/F46D98E7-EAC2-E611-936E-0CC47A7452D0.root',
+# '/store/relval/CMSSW_9_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/90X_upgrade2023_realistic_v1_2023D4Timing-v1/10000/36D3D8CD-3BC2-E611-908A-0025905A6088.root',
 #'/store/mc/RunIISummer16DR80/MinBias_TuneCUETP8M1_13TeV-pythia8/GEN-SIM-RECO/NoPU_RECO_80X_mcRun2_asymptotic_v14-v1/100000/00150044-D075-E611-AAE8-001E67505A2D.root', # 80X file
 #'/store/data/Run2015A/ZeroBias1/RECO/PromptReco-v1/000/250/786/00000/B4CDEBBC-F52A-E511-808D-02163E011CE8.root', 
 ])
