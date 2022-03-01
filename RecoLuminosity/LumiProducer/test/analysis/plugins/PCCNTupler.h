@@ -21,6 +21,7 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "Geometry/TrackerGeometryBuilder/interface/PixelGeomDetUnit.h"
+//#include "Geometry/CommonTopologies/interface/PixelGeomDetUnit.h"
 #include "TrackingTools/TrackAssociator/interface/TrackDetectorAssociator.h"
 #include "HLTrigger/HLTcore/interface/HLTConfigProvider.h"
 #include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
@@ -70,17 +71,22 @@ class PCCNTupler : public edm::one::EDAnalyzer<edm::one::SharedResources, edm::o
     //edm::EDGetTokenT<edm::SortedCollection<HFRecHit,edm::StrictWeakOrdering<HFRecHit> > > hfToken;
     //edm::EDGetTokenT<edm::SortedCollection<HFPreRecHit,edm::StrictWeakOrdering<HFPreRecHit> > > hfToken;
     //token for qie
-    edm::EDGetTokenT<HcalDataFrameContainer<QIE10DataFrame> > qie10digisToken_;
+    //edm::EDGetTokenT<HcalDataFrameContainer<QIE10DataFrame> > qie10digisToken_;
     //edm::EDGetTokenT< QIE10DigiCollection > qie10digisToken_;
+    //  ????????
+    edm::EDGetTokenT< HcalDataFrameContainer<QIE10DataFrame> > qie10digisToken_;
     //random other token to check if qie is unique
     edm::EDGetTokenT<edm::SortedCollection<HBHEDataFrame,edm::StrictWeakOrdering<HBHEDataFrame> >> othertoken;
 
     float *jhcalpt, *jhcalphi, *jhcaleta, *jhcale, *jhcalemf, *jhcaln90, *jhcaln90hits;
     float *hfcaleta, *hfcalphi; //, *hfcale; //bpg
-    int *soi, *ok, *adc, *le_tdc, *te_tdc, *capid;
+    int *subdet, *depth, *rawId, *linkEr, *flags;
+    int **soi, **ok, **adc, **le_tdc, **te_tdc, **capid;
+    double **fC;
     int nhjetcal;
     //int nhf; //bpg
     int nqieval; //bpg
+    double etsum; //bpg 
     //float *qiehits;
     //map to store the total energy as a function of ieta and iphi.
     //std::map<std::pair<int,int>,float> hcalTotE;

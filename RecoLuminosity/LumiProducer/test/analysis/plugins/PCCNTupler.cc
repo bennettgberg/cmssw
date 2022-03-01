@@ -16,6 +16,8 @@
 
 #include "DataFormats/SiPixelDetId/interface/PixelBarrelName.h"
 #include "DataFormats/SiPixelDetId/interface/PixelEndcapName.h"
+//#include "DataFormats/TrackerCommon/interface/PixelBarrelName.h"
+//#include "DataFormats/TrackerCommon/interface/PixelEndcapName.h"
 
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -25,6 +27,14 @@
 #include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
 
 #include "DataFormats/SiPixelCluster/interface/SiPixelCluster.h"
+
+//added bc of jingyu's code
+#include "CalibFormats/HcalObjects/interface/HcalCoderDb.h"
+#include "CalibFormats/HcalObjects/interface/HcalDbService.h"
+#include "CalibFormats/HcalObjects/interface/HcalDbRecord.h"
+#include "DataFormats/HcalDetId/interface/HcalSubdetector.h"
+#include "DataFormats/HcalDetId/interface/HcalDetId.h"
+#include "DataFormats/HcalDetId/interface/HcalGenericDetId.h"
 
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 DEFINE_FWK_MODULE(PCCNTupler);
@@ -51,7 +61,7 @@ PCCNTupler::PCCNTupler(edm::ParameterSet const& iConfig):
     includeVertexInformation(iConfig.getUntrackedParameter<bool>("includeVertexInformation",0)), //bpg changed to 0
     includePixels(iConfig.getUntrackedParameter<bool>("includePixels",0)), //bpg changed to 0
     //includeJets(iConfig.getUntrackedParameter<bool>("includeJets",0)),
-    includeJets(iConfig.getUntrackedParameter<bool>("includeJets",0)), //bpg wants to includeJets now!
+    includeJets(iConfig.getUntrackedParameter<bool>("includeJets",0)), //bpg wants to NOT includeJets now!
     includeHF(iConfig.getUntrackedParameter<bool>("includeHF",1)), //bpg added
     splitByBX(iConfig.getUntrackedParameter<bool>("splitByBX",1)),
     pixelPhase2Geometry(iConfig.getUntrackedParameter<bool>("pixelPhase2Geometry",0))
@@ -154,7 +164,10 @@ PCCNTupler::PCCNTupler(edm::ParameterSet const& iConfig):
         //reco file needed for this one
         //qie10digisToken_ = consumes<HcalDataFrameContainer<QIE10DataFrame> >(edm::InputTag("simHcalUnsuppressedDigis")); 
         //????
-        qie10digisToken_ = consumes<HcalDataFrameContainer<QIE10DataFrame> >(edm::InputTag("simHcalUnsuppressedDigis")); 
+        //qie10digisToken_ = consumes< QIE10DigiCollection >(edm::InputTag("hcalDigis")); //simHcalUnsuppressedDigis")); 
+        qie10digisToken_ = consumes< HcalDataFrameContainer<QIE10DataFrame> >(edm::InputTag("hcalDigis")); //simHcalUnsuppressedDigis")); //valid!
+        //qie10digisToken_ = consumes< HcalDataFrameContainer<QIE10DataFrame> >(edm::InputTag("simHcalUnsuppressedDigis")); 
+        //qie10digisToken_ = consumes<HcalDataFrameContainer<QIE10DataFrame> >(edm::InputTag("HFQIE10DigiCollection")); 
         //??
         //qie10digisToken_ = consumes< QIE10DigiCollection >(edm::InputTag("simHcalUnsuppressedDigis")); 
        // qie10digisToken_ = consumes< QIE10DigiCollection >(edm::InputTag("HFQIE10DigiCollection")); 
@@ -162,13 +175,29 @@ PCCNTupler::PCCNTupler(edm::ParameterSet const& iConfig):
         const int kMaxHFCal = 10000;
         hfcalphi = new float[kMaxHFCal];
         hfcaleta = new float[kMaxHFCal];
+        subdet  = new int[kMaxHFCal];
+        depth   = new int[kMaxHFCal];
+        rawId   = new int[kMaxHFCal];
+        linkEr  = new int[kMaxHFCal];
+        flags   = new int[kMaxHFCal];
         //hfcale = new int[kMaxHFCal];
-        soi    = new int[kMaxHFCal];
-        ok     = new int[kMaxHFCal];
-        adc    = new int[kMaxHFCal];
-        le_tdc = new int[kMaxHFCal];
-        te_tdc = new int[kMaxHFCal];
-        capid  = new int[kMaxHFCal];
+        soi = new int*[kMaxHFCal];
+        ok  = new int*[kMaxHFCal];
+        adc = new int*[kMaxHFCal];
+        le_tdc = new int*[kMaxHFCal];
+        te_tdc = new int*[kMaxHFCal];
+        capid = new int*[kMaxHFCal];
+        fC = new double*[kMaxHFCal];
+        for(int ctr=0; ctr<kMaxHFCal; ctr++) { 
+            soi[ctr] = new int[3];
+            ok    [ctr] = new int[3];
+            adc   [ctr] = new int[3];
+            le_tdc[ctr] = new int[3];
+            te_tdc[ctr] = new int[3];
+            capid [ctr] = new int[3];
+            //trying to get this from adc2fc
+            fC  [ctr]   = new double[3];
+        }
         
         //tree->Branch("Nohf", &nhf, "Nohf/I");
         tree->Branch("Noqie", &nqieval, "Noqie/I");
@@ -176,12 +205,20 @@ PCCNTupler::PCCNTupler(edm::ParameterSet const& iConfig):
         //tree->Branch("hfPhi", hfcalphi, "hfcalphi[Nohf]/F");
         tree->Branch("hfcaleta", hfcaleta, "hfcaleta[Noqie]/F");
         tree->Branch("hfPhi", hfcalphi,  "hfcalphi[Noqie]/F");
-        tree->Branch( "soi"   , soi   , "soi[Noqie]/I"       );
-        tree->Branch( "ok"    , ok    , "ok[Noqie]/I"        );
-        tree->Branch( "adc"   , adc   , "adc[Noqie]/I"       );
-        tree->Branch( "le_tdc", le_tdc, "le_tdc[Noqie]/I"    );
-        tree->Branch( "te_tdc", te_tdc, "te_tdc[Noqie]/I"    );
-        tree->Branch( "capid" , capid , "capid[Noqie]/I"     );
+        tree->Branch("subdet", subdet,  "subdet[Noqie]/I");
+        tree->Branch("depth", depth,  "depth[Noqie]/I");
+        tree->Branch("rawId", rawId,  "rawId[Noqie]/I");
+        tree->Branch("linkEr", linkEr,  "linkEr[Noqie]/I");
+        tree->Branch("flags", flags,  "flags[Noqie]/I");
+        tree->Branch( "soi"   , soi   , "soi[Noqie][3]/I"       );
+        tree->Branch( "ok"    , ok    , "ok[Noqie][3]/I"        );
+        tree->Branch( "adc"   , adc   , "adc[Noqie][3]/I"       );
+        tree->Branch( "le_tdc", le_tdc, "le_tdc[Noqie][3]/I"    );
+        tree->Branch( "te_tdc", te_tdc, "te_tdc[Noqie][3]/I"    );
+        tree->Branch( "capid" , capid , "capid[Noqie][3]/I"     );
+        //will this work??
+        tree->Branch( "fC" , fC , "fC[Noqie][3]/D"     );
+        tree->Branch( "etsum" , &etsum , "etsum/D"     );
        // tree->Branch("hfcale", hfcale, "hfcale[Nohf]/F");
                       
 
@@ -442,16 +479,19 @@ void PCCNTupler::analyze(const edm::Event& iEvent,
     
     //bpg added this section
     if(includeHF) {
-        std::cout << "Including HF" << std::endl;
+       // std::cout << "Including HF" << std::endl;
 
         nqieval = 0;
+        etsum = 0.0;
         //nhf = 0;
         //edm::Handle<edm::SortedCollection<HFRecHit,edm::StrictWeakOrdering<HFRecHit> >> hfRecHits;
         //edm::Handle< edm::SortedCollection<HFPreRecHit,edm::StrictWeakOrdering<HFPreRecHit> > > hfRecHits;
         //????
-        edm::Handle< HcalDataFrameContainer<QIE10DataFrame> > qiehandle;
+        //edm::Handle< HcalDataFrameContainer<QIE10DataFrame> > qiehandle;
         //??
         //edm::Handle< QIE10DigiCollection > qiehandle;
+        //????????
+        edm::Handle< HcalDataFrameContainer<QIE10DataFrame> > qiehandle;
         edm::Handle< edm::SortedCollection<HBHEDataFrame,edm::StrictWeakOrdering<HBHEDataFrame> > > otherhandle;
         //std::cout << "hfRecHits declared." << std::endl;
         //edm::Handle<edm::SortedCollection<HFRecHit>> hfRecHits;
@@ -462,10 +502,10 @@ void PCCNTupler::analyze(const edm::Event& iEvent,
         //bool valid = hfRecHits.isValid();
         bool valid = qiehandle.isValid();
         bool othervalid = otherhandle.isValid();
-        std::cout << "othervalid: " << othervalid << std::endl;
         if (not valid) {
          //   std::cout << "hfRecHits not valid. fffffff" <<std::endl;
             std::cout << "Not valid!!!!" << std::endl;
+            std::cout << "othervalid: " << othervalid << std::endl;
             //nhf = -1;
             //if(hfRecHits.failedToGet()) {
             if(qiehandle.failedToGet()) {
@@ -473,75 +513,100 @@ void PCCNTupler::analyze(const edm::Event& iEvent,
                 std::cout << "data not available!! " <<std::endl;
                 //nhf = -2; 
                 nqieval = -2; 
-            }
+            } //end failed to get qie
             else {
                 std::cout << "no attmept to get data was made!" << std::endl;
                 //nhf = -5;
                 nqieval = -5;
-            }
-        } 
+            } //end no attempt made block
+        } //end not valid block
         else {
             //edm::SortedCollection<HFRecHit> myhfrechits;
-            std::cout << "Valid!!!!!!!!!!!!!!!" << std::endl;
+            //std::cout << "Valid!!!!!!!!!!!!!!!" << std::endl;
            // edm::SortedCollection<HFRecHit, edm::StrictWeakOrdering<HFRecHit> > myhfrechits;
            // edm::SortedCollection<HFPreRecHit,edm::StrictWeakOrdering<HFPreRecHit> > myhfrechits;
             //????
             //HcalDataFrameContainer<QIE10DataFrame> myqie;
             //myhfrechits = *hfRecHits;
             //myqie = *qiehandle;
-            std::cout << "myhfrechits assigned!!!!" << std::endl;
+            //std::cout << "myhfrechits assigned!!!!" << std::endl;
             //std::sort(mycalojets.begin(),mycalojets.end(),PtGreater());
             //typedef edm::SortedCollection<HFRecHit>::const_iterator hfiter;
             //typedef edm::SortedCollection<HFRecHit,edm::StrictWeakOrdering<HFRecHit>>::const_iterator hfiter;
             //typedef edm::SortedCollection<HFPreRecHit,edm::StrictWeakOrdering<HFPreRecHit> >::const_iterator hfiter;
-            typedef HcalDataFrameContainer<QIE10DataFrame>::const_iterator qieiter;
-            std::cout << "qieiter declared." << std::endl;
+            //typedef HcalDataFrameContainer<QIE10DataFrame>::const_iterator qieiter;
+            //std::cout << "qieiter declared." << std::endl;
             //int hfcal=0;
+            edm::ESHandle<HcalDbService> conditions;
+            iSetup.get<HcalDbRecord>().get(conditions);
+
+            uint32_t othersize = otherhandle->size();
+            uint32_t qiesize = qiehandle->size();
+            std::cout << "qie size: " << qiesize << ", other size: " << othersize << std::endl;
             int nqie = 0;
             //for ( hfiter i=myhfrechits.begin(); i!=myhfrechits.end(); i++) {
             //for ( qieiter i=myqie.begin(); i!=myqie.end(); i++) {
-            for (uint32_t i=0; i<qiehandle->size(); i++){
+            double hetsum = 0.0;
+            for (uint32_t i=0; i<qiesize; i++){
                 // From: https://github.com/awhitbeck/HFcommissioningAnalysis/blob/b3456c9fe66ef9bcc6c54773d60f768c269a5c74/src/HFanalyzer.cc#L429
                 QIE10DataFrame qie10df = static_cast<QIE10DataFrame>((*qiehandle)[i]);
                 //if (i->pt()>5 && i->energy()>0.){
                 //if(hfcal %10 == 0) std::cout << "inside hfiter loop! hfcal = " << hfcal << std::endl;
-                if(nqie %10 == 0) std::cout << "inside qieiter loop! nqie = " << nqie << std::endl;
+                //if(nqie %10 == 0) std::cout << "inside loop! nqie = " << nqie << std::endl;
                 //if (i->energy()>0.){
                 //get detid
                 DetId detid = qie10df.detid();
                 HcalDetId hcdi = HcalDetId(detid);
+                //std::cout << "got the detid." << std::endl;
+
+                //trying to convert adc to fC
+                const HcalQIECoder* channelCoder = conditions -> getHcalCoder(hcdi);
+                const HcalQIEShape* shape = conditions -> getHcalShape(channelCoder);
+                HcalCoderDb coder(*channelCoder,*shape);
+                CaloSamples cs; coder.adc2fC(qie10df,cs);
+
+                hfcalphi[nqie] = hcdi.iphi(); //i->iphi();
+                hfcaleta[nqie] = hcdi.ieta(); //i->ieta();
+                //subdetector is HF
+                subdet[nqie] = 5;
+                depth[nqie] = hcdi.depth();
+                rawId[nqie] = hcdi.rawId();
+                linkEr[nqie] = qie10df.linkError();
+                flags[nqie] = qie10df.flags();
 
                 int nTS = qie10df.samples();
+                //std::cout << "nTS: " << nTS << std::endl;
                 //get the samples
+                //std::cout << "about to start the its loop. i=" << i << ", nTS=" << nTS << ",nqie=" << nqie << std::endl;
                 for(int its=0; its<nTS; ++its)
                 { 
                     auto sam = qie10df[its];
-                //QIE10DataFrame::Sample sam = myqie[i];
-                //if (sam.ok()){ //?????
-                    //make an HcalDetId object to get the iphi, ieta info.
-                    //HcalDetId hcdi = i->id();
-                    //hfcalphi[hfcal] = hcdi.iphi(); //i->iphi();
-                    //hfcaleta[hfcal] = hcdi.ieta(); //i->ieta();
-                    hfcalphi[nqie] = hcdi.iphi(); //i->iphi();
-                    hfcaleta[nqie] = hcdi.ieta(); //i->ieta();
-                    //hfcale[hfcal] = i->energy();
                     //get digital energy as a function of ieta and iphi.
-                    //hfcale[hfcal] = 0; //TODO: this
                     //the below are all ints stored by the QIE10DataFrame
-                    soi    [nqie] = sam.soi() ;
-                    ok     [nqie] = sam.ok()  ;
-                    adc    [nqie] = sam.adc()  ;
-                    le_tdc [nqie] = sam.le_tdc() ;
-                    te_tdc [nqie] = sam.te_tdc() ;
-                    capid  [nqie] = sam.capid()  ;
-                
+                    //std::cout << "will now store soi, ok, adc, etc. its=" << its << std::endl;
+                    soi    [nqie][its] = sam.soi() ;
+                    ok     [nqie][its] = sam.ok()  ;
+                    adc    [nqie][its] = sam.adc()  ;
+                    le_tdc [nqie][its] = sam.le_tdc() ;
+                    te_tdc [nqie][its] = sam.te_tdc() ;
+                    capid  [nqie][its] = sam.capid()  ;
+
+                    //will this work??
+                    fC     [nqie][its] = cs[its];
+                    //only include long fibers in the etsum
+                    if(depth[nqie] == 1) {
+                        hetsum += fC[nqie][its]/nTS; 
+                    }
                     //hfcal++;
-                    nqie++;
-                } //energy>0 cuts
-            } //for hfiter loop
+                    //std::cout << "done with its loop iteration." << std::endl;
+                } //its loop
+                nqie++;
+            } //end for i (nqie) loop
             //nhf = hfcal;
+            //std::cout << "done with i loop over nqie." << std::endl;
             nqieval = nqie;
-        } //valid True
+            etsum = hetsum;
+        } //end valid True block
     } //includeHF
 } //analyze function
 

@@ -37,4 +37,9 @@
   <class name="HCAL_HLX::BRANA_INFO"/>
   <class name="HCAL_HLX::BRANP_INFO"/>
   <class name="HCAL_HLX::DIP_COMBINED_DATA"/>
+  <!--adding the below to try to resolve cmssw error -->
+<!--  <class name="edm::Ref<vector<l1t::EMTFTrack>,l1t::EMTFTrack,edm::refhelper::FindUsingAdvance<vector<l1t::EMTFTrack>,l1t::EMTFTrack> >" />
+  <class name="l1t::EMTFHit"/>
+  <class name="l1t::EMTFHitCollection"/>
+  <class name="edm::Wrapper<l1t::EMTFHitCollection>"/> -->
 </lcgdict>
