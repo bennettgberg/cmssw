@@ -1,0 +1,16 @@
+pu                    = 0
+exec_name             = drive_N$(pu)
+test_name             = $(exec_name)_try0
+executable            = $(exec_name)_$(ProcId).sh
+Proxy_path            = /afs/cern.ch/user/b/bgreenbe/x509up_u104084
+arguments             = $(Proxy_path) $(ClusterId) $(ProcId)
+output                = $(test_name)_$(ProcId).out
+error                 = $(test_name)_$(ProcId).err
+log                   = $(test_name)_$(ProcId).log
+transfer_input_files  = BPH-RunIIAutumn18DR-Poisson$(pu)_cfg.py
+#+JobFlavour           = "testmatch"
+#+JobFlavour           = "microcentury"
+#+JobFlavour           = "workday"
+#+JobFlavour           = "nextweek" 
++JobFlavour           = "tomorrow" 
+queue 1
