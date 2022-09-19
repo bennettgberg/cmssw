@@ -25,6 +25,9 @@
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/Framework/interface/ESHandle.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
+#include "FWCore/Utilities/interface/EDGetToken.h"
+#include "FWCore/Utilities/interface/InputTag.h"
+
 
 #include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
 
@@ -37,10 +40,17 @@
 #include "DataFormats/HcalDetId/interface/HcalSubdetector.h"
 #include "DataFormats/HcalDetId/interface/HcalDetId.h"
 #include "DataFormats/HcalDetId/interface/HcalGenericDetId.h"
+#include "CalibFormats/HcalObjects/interface/HcalCalibrations.h"
+
+#include "DataFormats/HcalDigi/interface/HcalDigiCollections.h"
+#include "DataFormats/EcalDigi/interface/EcalDigiCollections.h"
+#include "DataFormats/HcalRecHit/interface/HcalRecHitCollections.h"
+#include "DataFormats/HcalRecHit/interface/CaloRecHitAuxSetter.h"
+#include "DataFormats/HcalRecHit/test/HcalRecHitDump.cc"
 
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 DEFINE_FWK_MODULE(PCCNTupler);
-
+#include "RecoLocalCalo/HcalRecAlgos/interface/HcalChannelPropertiesRecord.h"
 
 #include <TROOT.h>
 #include <TSystem.h>
@@ -174,6 +184,7 @@ PCCNTupler::PCCNTupler(edm::ParameterSet const& iConfig):
         //qie10digisToken_ = consumes< QIE10DigiCollection >(edm::InputTag("simHcalUnsuppressedDigis")); 
        // qie10digisToken_ = consumes< QIE10DigiCollection >(edm::InputTag("HFQIE10DigiCollection")); 
         othertoken = consumes<edm::SortedCollection<HBHEDataFrame,edm::StrictWeakOrdering<HBHEDataFrame> >>(edm::InputTag("simHcalUnsuppressedDigis"));
+        hcalDbServiceToken_ = esConsumes<HcalDbService, HcalDbRecord>();
         const int kMaxHFCal = 10000;
         hfcalphi = new float[kMaxHFCal];
         hfcaleta = new float[kMaxHFCal];
@@ -542,8 +553,11 @@ void PCCNTupler::analyze(const edm::Event& iEvent,
             /////////added///////
             //edm::ESGetToken<HcalDbService, HcalDbRecord> tok_dbService_;
             ////////////////////
-            edm::ESHandle<HcalDbService> conditions;
-            iSetup.get<HcalDbRecord>().get(conditions);
+//            edm::ESHandle<HcalDbService> conditions;
+//            iSetup.get<HcalDbRecord>().get(conditions);
+
+            conditions = &iSetup.getData(hcalDbServiceToken_);
+
 
             uint32_t othersize = otherhandle->size();
             uint32_t qiesize = qiehandle->size();
@@ -580,9 +594,9 @@ void PCCNTupler::analyze(const edm::Event& iEvent,
                 flags[nqie] = qie10df.flags();
 
                 int nTS = qie10df.samples();
-                //std::cout << "nTS: " << nTS << std::endl;
-                //get the samples
-                //std::cout << "about to start the its loop. i=" << i << ", nTS=" << nTS << ",nqie=" << nqie << std::endl;
+              //std::cout << "nTS: " << nTS << std::endl;
+              //get the samples
+              //std::cout << "about to start the its loop. i=" << i << ", nTS=" << nTS << ",nqie=" << nqie << std::endl;
                 for(int its=0; its<nTS; ++its)
                 { 
                     auto sam = qie10df[its];

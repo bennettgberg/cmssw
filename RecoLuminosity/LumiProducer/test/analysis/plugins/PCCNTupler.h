@@ -36,6 +36,8 @@
 #include "FWCore/Framework/interface/one/EDAnalyzer.h"
 #include "FWCore/Utilities/interface/EDGetToken.h"
 
+#include "CalibFormats/HcalObjects/interface/HcalDbRecord.h"
+#include "CalibFormats/HcalObjects/interface/HcalDbService.h"
 #include "TObject.h"
 #include "TH1F.h"
 
@@ -68,6 +70,9 @@ class PCCNTupler : public edm::one::EDAnalyzer<edm::one::SharedResources, edm::o
     edm::EDGetTokenT<reco::VertexCollection> recoVtxToken;
     edm::EDGetTokenT<std::vector< PileupSummaryInfo> > pileUpToken;
     edm::EDGetTokenT<reco::CaloJetCollection>  hltjetsToken_;
+    const HcalDbService* conditions;
+   edm::ESGetToken<HcalDbService, HcalDbRecord> hcalDbServiceToken_;
+
     //edm::EDGetTokenT<edm::SortedCollection<HFRecHit>> hfToken;
     //edm::EDGetTokenT<edm::SortedCollection<HFRecHit,edm::StrictWeakOrdering<HFRecHit> > > hfToken;
     //edm::EDGetTokenT<edm::SortedCollection<HFPreRecHit,edm::StrictWeakOrdering<HFPreRecHit> > > hfToken;
