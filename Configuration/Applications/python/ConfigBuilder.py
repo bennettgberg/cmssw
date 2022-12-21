@@ -1319,10 +1319,11 @@ class ConfigBuilder(object):
                 loadFragment='Configuration.Generator.'+loadFragment
         else:
                 loadFragment=loadFragment.replace('/','.')
-	try:
+	#try:
+        if 0 == 0:
 		print "Loading generator fragment from",loadFragment
 		__import__(loadFragment)
-	except:
+	else:    #except:
 		loadFailure=True
 		#if self.process.source and self.process.source.type_()=='EmptySource':
 		if not (self._options.filein or self._options.dasquery):
