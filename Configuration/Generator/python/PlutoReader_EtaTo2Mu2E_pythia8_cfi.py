@@ -1,6 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 
-generator = cms.EDFilter("Pythia8PlutoReaderGun",
+#generator = cms.EDFilter("Pythia8PlutoReaderGun",
+generator = cms.EDFilter("Pythia8PlutoReaderExpGun",
 
     maxEventsToPrint = cms.untracked.int32(1),
     pythiaPylistVerbosity = cms.untracked.int32(1),
