@@ -1,18 +1,18 @@
 import FWCore.ParameterSet.Config as cms
 
-#generator = cms.EDFilter("Pythia8PlutoReaderGun",
-generator = cms.EDFilter("Pythia8PlutoReaderExpGun",
+generator = cms.EDFilter("Pythia8PlutoReaderGun",
+#generator = cms.EDFilter("Pythia8PlutoReaderExpGun",
 
     maxEventsToPrint = cms.untracked.int32(1),
     pythiaPylistVerbosity = cms.untracked.int32(1),
     pythiaHepMCVerbosity = cms.untracked.bool(True),
 
     PGunParameters = cms.PSet(
-        #Filename = cms.string('GeneratorInterface/Pythia8Interface/test/pluto_EtaTo2Mu2E_100k_events.csv'),
+        Filename = cms.string('GeneratorInterface/Pythia8Interface/test/pluto_EtaTo2Mu2E_100k_events.csv'),
         #Filename = cms.string('root://cmseos.fnal.gov//store/user/bgreenbe/pluto_EtaTo2Mu2E_1M_events.csv'),
         ##running test for debugging!
         #Filename = cms.string('GeneratorInterface/Pythia8Interface/test/pluto_EtaTo2Mu2E_1M_100events.csv'),
-        Filename = cms.string('GeneratorInterface/Pythia8Interface/test/pluto_EtaTo2Mu2E_1M_events.csv'),
+        #Filename = cms.string('GeneratorInterface/Pythia8Interface/test/pluto_EtaTo2Mu2E_1M_events.csv'),
         ParticleID = cms.vint32(11,13),
         MakeDisplaced = cms.bool(False),
         MinPhi = cms.double(-3.14159265359),
