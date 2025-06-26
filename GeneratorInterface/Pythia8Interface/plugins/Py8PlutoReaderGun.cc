@@ -29,7 +29,7 @@ class Py8PlutoReaderGun : public Py8GunBase {
       bool    fMakeDisplaced;
       int     fNumDaughters;
       std::string fFilename;
-      double fMinDaughterPt = 2.0; //just set the value here instead of figuring out how to do a default value, and all that...
+      double fMinDaughterPt = 0.0; //just set the value here instead of figuring out how to do a default value, and all that...
 
       std::vector<float> all_ee, all_px, all_py, all_pz;
       std::vector<int> used_events;
