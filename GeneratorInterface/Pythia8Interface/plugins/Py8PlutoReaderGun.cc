@@ -29,6 +29,7 @@ class Py8PlutoReaderGun : public Py8GunBase {
       bool    fMakeDisplaced;
       int     fNumDaughters;
       std::string fFilename;
+      double fMinDaughterPt = 2.0; //just set the value here instead of figuring out how to do a default value, and all that...
 
       std::vector<float> all_ee, all_px, all_py, all_pz;
       std::vector<int> used_events;
@@ -40,7 +41,7 @@ class Py8PlutoReaderGun : public Py8GunBase {
 Py8PlutoReaderGun::Py8PlutoReaderGun( edm::ParameterSet const& ps )
    : Py8GunBase(ps), used_events({}) {
 
-   // ParameterSet defpset ;
+   //edm::ParameterSet defpset ;
    edm::ParameterSet pgun_params = 
       ps.getParameter<edm::ParameterSet>("PGunParameters"); // , defpset ) ;
    fFilename = pgun_params.getParameter<std::string>("Filename");
@@ -52,11 +53,17 @@ Py8PlutoReaderGun::Py8PlutoReaderGun( edm::ParameterSet const& ps )
    fMaxProdRadius = pgun_params.getParameter<double>("MaxProdRadius"); // , 0.);
    fMakeDisplaced = pgun_params.getParameter<bool>("MakeDisplaced"); //, true);
    fNumDaughters = pgun_params.getParameter<int>("NumDaughters"); // 4
+   //fMinDaughterPt = pgun_params.getParameter<double>("MinDaughterPt"); //, 0.);
 
    std::cout << "[Py8PlutoReaderGun constructor] Begin reading Pluto input file..." << std::endl;
    std::ifstream infile(fFilename);
    float ee, px, py, pz, dummy1, dummy2, dummy3, dummy4;
    while (infile >> ee >> px >> py >> pz >> dummy1 >> dummy2 >> dummy3 >> dummy4) {
+      double pt = sqrt(px*px + py*py);
+      if(pt < fMinDaughterPt) {
+          //std::cout << "erm... what the sigma?? pt=" << pt << ", fMinDaughterPt=" << fMinDaughterPt << std::endl;
+          continue;
+      }
       all_ee.push_back(ee);
       all_px.push_back(px);
       all_py.push_back(py);
