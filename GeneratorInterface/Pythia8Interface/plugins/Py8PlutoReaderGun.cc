@@ -147,7 +147,8 @@ bool Py8PlutoReaderGun::generatePartonsAndHadronize()
    }
 
    //now the eta meson boost (from input params)
-   double m0 = 0.547;
+   //double m0 = 0.547; //eta meson
+   double m0 = 0.9578; //eta prime meson
    double pT = (fMaxPt-fMinPt) * randomEngine().flat() + fMinPt;
    double phi = (fMaxPhi-fMinPhi) * randomEngine().flat() + fMinPhi;
    double eta  = (fMaxEta-fMinEta) * randomEngine().flat() + fMinEta;
@@ -159,7 +160,7 @@ bool Py8PlutoReaderGun::generatePartonsAndHadronize()
    double betaX = pp / ee * std::sin(the) * std::cos(phi);
    double betaY = pp / ee * std::sin(the) * std::sin(phi);
    double betaZ = pp / ee * std::cos(the);
-
+   //std::cout << "generated pT: " << pT << std::endl;
    // boost all particles
    (fMasterGen->event).bst(betaX, betaY, betaZ);
    
